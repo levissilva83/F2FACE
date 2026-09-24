@@ -1,0 +1,27 @@
+# =====================================================================
+# F2FACE · regras para hospedagem Apache (cPanel, Hostinger, Locaweb...)
+# =====================================================================
+DirectoryIndex index.html
+Options -Indexes
+
+RewriteEngine On
+# 1. Sempre https: a câmera do tablet só funciona em endereço seguro
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://f2face.com.br%{REQUEST_URI} [L,R=301]
+# 2. Um endereço só (sem www): login, links dos e-mails e QR codes batem sempre
+RewriteCond %{HTTP_HOST} ^www\.f2face\.com\.br$ [NC]
+RewriteRule ^ https://f2face.com.br%{REQUEST_URI} [L,R=301]
+
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  # câmera só para o próprio site; microfone e localização bloqueados
+  Header always set Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+  # páginas sempre atualizadas: uma nova versão chega aos tablets no próximo carregamento
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
