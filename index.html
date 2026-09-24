@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12211C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>F2FACE · Tablet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* Projeto Supabase do F2FACE (chave pública: pode ficar no arquivo) */
+const SUPABASE_URL = 'https://jjxsggkhjmltpyolygjw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_bWqAbndbIC6_t27KWliemg_3eJDtkXp';
+</script>
+<style>
+:root{
+  --tatame:#12211C; --tatame-2:#1A3029; --tatame-3:#26433A; --linha:#34574B;
+  --algodao:#EEF2EF; --muted:#9FB3AA; --medalha:#E0B341; --medalha-2:#C99A22;
+  --ok:#45C486; --erro:#E86A5C; --info:#6AA8E8; --aviso:#E8A24A;
+  --papel:#F7FAF8; --tinta:#12211C; --tinta-2:#4A5F57;
+  --display:"Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --body:"Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--tatame);color:var(--algodao);font-family:var(--body);font-size:17px;line-height:1.45;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--medalha);outline-offset:2px}
+[hidden]{display:none!important}
+.btn{border:0;border-radius:12px;padding:13px 22px;font-weight:700;background:var(--tatame-3);color:var(--algodao)}
+.btn.primario{background:var(--medalha);color:var(--tatame)}
+.btn.perigo{background:transparent;border:2px solid var(--erro);color:var(--erro)}
+.btn.leve{background:transparent;border:2px solid var(--linha)}
+.btn.peq{padding:8px 14px;font-size:15px;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.campo{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px;color:var(--muted)}
+.campo input,.campo select{padding:12px 14px;border-radius:12px;border:2px solid var(--linha);background:var(--tatame);color:var(--algodao);font-weight:500}
+.campo input:focus{border-color:var(--medalha);outline:none}
+.erro-box{color:#FFC2BA;background:rgba(232,106,93,.12);border:1px solid rgba(232,106,93,.45);border-radius:12px;padding:14px;text-align:left;font-size:15px}
+
+/* ---------- Carregamento e pareamento ---------- */
+.tela{position:fixed;inset:0;display:grid;place-items:center;background:var(--tatame);z-index:50;padding:24px;overflow:auto;user-select:text}
+.tela-inner{width:min(460px,100%);text-align:center}
+.marca{font-family:var(--display);font-weight:800;font-size:64px;letter-spacing:.04em;line-height:1;margin:0}
+.marca-sub{color:var(--muted);margin:6px 0 28px}
+.barra{height:6px;border-radius:3px;background:var(--tatame-2);overflow:hidden}
+.barra i{display:block;height:100%;width:0;background:var(--medalha);transition:width .4s}
+.btn-iniciar{margin-top:10px;background:var(--medalha);color:var(--tatame);border:0;border-radius:999px;padding:18px 44px;font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.02em}
+.local{font-family:var(--display);font-size:28px;font-weight:700;margin:0}
+.pareamento{display:flex;flex-direction:column;gap:14px;text-align:left}
+.pareamento .codigo{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:15px}
+.qr-view{position:relative;border-radius:16px;overflow:hidden;background:#000;aspect-ratio:1}
+.qr-view video{width:100%;height:100%;object-fit:cover}
+.qr-view::after{content:"";position:absolute;inset:18%;border:3px solid var(--medalha);border-radius:18px}
+.acoes{display:flex;gap:10px;flex-wrap:wrap}
+.acoes .btn{flex:1}
+
+/* ---------- Quiosque ---------- */
+.stage{position:fixed;inset:0;overflow:hidden;background:#000}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.espelho video,.espelho canvas{transform:scaleX(-1)}
+.guia{position:absolute;left:50%;top:48%;width:min(52vw,46vh);aspect-ratio:3/4;transform:translate(-50%,-50%);border-radius:50%;box-shadow:0 0 0 200vmax rgba(18,33,28,.6);border:3px dashed rgba(238,242,239,.5);transition:border-color .25s}
+.stage[data-estado="lendo"] .guia{border-color:var(--medalha);border-style:solid}
+.stage[data-estado="longe"] .guia{border-color:var(--info)}
+.topo{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:14px;padding:18px 22px;padding-top:calc(18px + env(safe-area-inset-top,0px))}
+.academia{line-height:1.1;min-width:0}
+.academia b{display:block;font-family:var(--display);font-size:28px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.academia span{color:var(--muted);font-size:15px}
+.rede{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);background:rgba(18,33,28,.7);padding:6px 12px;border-radius:999px;white-space:nowrap}
+.rede i{width:9px;height:9px;border-radius:50%;background:var(--ok)}
+.rede.off i{background:var(--erro)}
+.relogio{margin-left:auto;text-align:right;line-height:1}
+.relogio b{font-family:var(--display);font-size:44px;font-weight:700;display:block;font-variant-numeric:tabular-nums}
+.relogio span{color:var(--muted);font-size:15px}
+.icone{width:52px;height:52px;border-radius:50%;border:0;background:rgba(238,242,239,.12);display:grid;place-items:center;flex:none}
+.icone svg{width:24px;height:24px}
+.rodape{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px;padding-bottom:calc(26px + env(safe-area-inset-bottom,0px))}
+.status{background:var(--papel);color:var(--tinta);border-radius:999px;padding:14px 28px;font-weight:700;font-size:21px;display:flex;align-items:center;gap:12px;max-width:92vw;text-align:center}
+.status .ponto{width:12px;height:12px;border-radius:50%;background:var(--tinta-2);flex:none}
+.stage[data-estado="lendo"] .status .ponto{background:var(--medalha);animation:pulso .8s infinite alternate}
+.stage[data-estado="longe"] .status .ponto{background:var(--info)}
+.stage[data-estado="vazio"] .status .ponto{background:var(--erro)}
+.contagem{color:var(--muted);font-size:15px}
+.contagem b{color:var(--algodao)}
+@keyframes pulso{to{transform:scale(1.5);opacity:.6}}
+
+/* ---------- Cartão de boas-vindas ---------- */
+.resultado{position:fixed;inset:0;display:grid;place-items:center;background:rgba(18,33,28,.78);z-index:20;padding:24px}
+.cartao{--c:var(--ok);background:var(--papel);color:var(--tinta);width:min(560px,100%);border-radius:26px;padding:34px 34px 26px;text-align:center;border-top:12px solid var(--c);animation:entra .28s cubic-bezier(.2,1.4,.4,1)}
+.r-info .cartao{--c:var(--info)}
+.r-aviso .cartao{--c:var(--aviso)}
+.r-erro .cartao{--c:var(--erro)}
+.r-offline .cartao{--c:var(--tinta-2)}
+.avatar{width:112px;height:112px;border-radius:50%;margin:0 auto 16px;display:grid;place-items:center;background:var(--c);color:#fff;font-family:var(--display);font-weight:800;font-size:48px}
+.tipo{margin:0;font-weight:700;color:var(--c);font-size:20px}
+.cartao h2{font-family:var(--display);font-size:46px;font-weight:700;line-height:1.05;margin:6px 0 10px}
+.cartao p.meta{margin:0;color:var(--tinta-2);font-size:20px}
+.temporizador{height:5px;background:#D9E3DE;border-radius:3px;margin-top:24px;overflow:hidden}
+.temporizador i{display:block;height:100%;background:var(--c);transform-origin:left}
+@keyframes entra{from{transform:scale(.86);opacity:0}}
+@keyframes esvazia{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* Graduação desenhada */
+.graduacao{margin:16px auto 4px;width:min(360px,100%)}
+.gbar{position:relative;height:30px;border-radius:5px;background:var(--g);display:flex;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.gbar .listra{position:absolute;left:0;right:26%;top:36%;height:28%;background:var(--g2)}
+.gbar .ponta{margin-left:auto;width:26%;background:var(--p);display:flex;align-items:center;justify-content:center;gap:5px;padding:0 6px}
+.gbar .ponta i{width:5px;height:20px;background:#fff;border-radius:1px}
+.gnome{margin:8px 0 0;font-weight:700;font-size:18px;color:var(--tinta)}
+
+/* ---------- Telas sobrepostas ---------- */
+.modal{position:fixed;inset:0;background:rgba(18,33,28,.82);display:grid;place-items:center;z-index:40;padding:20px;overflow:auto}
+.folha{background:var(--tatame-2);border:1px solid var(--linha);border-radius:22px;padding:26px;width:min(460px,100%);user-select:text}
+.folha h3{font-family:var(--display);font-size:30px;font-weight:700;margin:0 0 4px}
+.folha > p{margin:0 0 16px;color:var(--muted)}
+.folha form,.folha .pilha{display:flex;flex-direction:column;gap:14px}
+.linha-fim{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap}
+.msg-erro{color:var(--erro);font-weight:600;min-height:1.4em;margin:6px 0 0}
+.check{display:flex;gap:12px;align-items:flex-start;font-weight:500;color:var(--algodao);background:var(--tatame);border:2px solid var(--linha);border-radius:12px;padding:14px}
+.check input{width:24px;height:24px;flex:none;accent-color:var(--medalha);margin-top:1px}
+.bloqueio{position:fixed;inset:0;z-index:35;background:var(--tatame);display:grid;place-items:center;text-align:center;padding:30px}
+.bloqueio h2{font-family:var(--display);font-size:44px;margin:0 0 8px}
+.bloqueio p{color:var(--muted);max-width:460px;margin:0 auto}
+
+.cap-folha{width:min(660px,100%)}
+.cap-view{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.cap-view video{width:100%;height:100%;object-fit:cover}
+.cap-view .guia{top:50%;width:46%;box-shadow:0 0 0 200vmax rgba(18,33,28,.5)}
+.cap-view.flash::after{content:"";position:absolute;inset:0;background:#fff;animation:flash .25s forwards}
+@keyframes flash{to{opacity:0}}
+.passos{display:flex;gap:8px;margin:16px 0 8px}
+.passos i{flex:1;height:8px;border-radius:4px;background:var(--linha);transition:background .2s}
+.passos i.on{background:var(--ok)}
+.cap-msg{font-weight:700;font-size:19px;margin:6px 0 0;min-height:1.5em}
+
+/* ---------- Modo equipe ---------- */
+.equipe{position:fixed;inset:0;background:var(--tatame);z-index:30;display:flex;flex-direction:column;user-select:text}
+.equipe header{display:flex;align-items:center;gap:14px;padding:14px 20px;padding-top:calc(14px + env(safe-area-inset-top,0px));border-bottom:1px solid var(--linha)}
+.equipe header .quem{line-height:1.15;min-width:0}
+.equipe header .quem b{font-family:var(--display);font-size:26px;display:block}
+.equipe header .quem span{color:var(--muted);font-size:14px}
+.equipe header .btn{margin-left:auto}
+.abas{display:flex;gap:4px;padding:10px 20px 0;overflow-x:auto;border-bottom:1px solid var(--linha)}
+.abas button{background:transparent;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 16px;font-weight:700;white-space:nowrap}
+.abas button[aria-selected="true"]{color:var(--algodao);border-bottom-color:var(--medalha)}
+.equipe main{flex:1;overflow:auto;padding:20px 20px 60px}
+.painel{max-width:960px;margin:0 auto}
+.barra-ferr{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
+.barra-ferr .campo{flex:1;min-width:220px}
+.lista{border:1px solid var(--linha);border-radius:16px;overflow:hidden}
+.item{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--linha);background:var(--tatame-2)}
+.item:last-child{border-bottom:0}
+.item .ini{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--tatame-3);font-family:var(--display);font-weight:700;font-size:18px;flex:none}
+.item .txt{flex:1;min-width:0}
+.item .txt b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .txt span{color:var(--muted);font-size:14px}
+.item .btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.selo{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--tatame-3);color:var(--muted);margin-left:6px}
+.selo.ok{background:rgba(69,196,134,.16);color:var(--ok)}
+.selo.aviso{background:rgba(232,162,74,.16);color:var(--aviso)}
+.selo.erro{background:rgba(232,106,93,.16);color:var(--erro)}
+.vazio{padding:30px;text-align:center;color:var(--muted)}
+.ajuste{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:16px 0;border-bottom:1px solid var(--linha)}
+.ajuste:last-child{border-bottom:0}
+.ajuste p{margin:2px 0 0;color:var(--muted);font-size:15px}
+.ajuste input[type=range]{width:200px;accent-color:var(--medalha)}
+.ajuste output{font-weight:700;min-width:3.5em;display:inline-block;text-align:right}
+.ajuste input[type=checkbox]{width:28px;height:28px;accent-color:var(--medalha)}
+.bloco{background:var(--tatame-2);border:1px solid var(--linha);border-radius:16px;padding:6px 18px;margin-bottom:18px}
+.dados{display:grid;grid-template-columns:auto 1fr;gap:8px 20px;padding:14px 0}
+.dados dt{color:var(--muted)}
+.dados dd{margin:0;font-weight:600}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.checks label{display:flex;gap:8px;align-items:center;background:var(--tatame);border:2px solid var(--linha);border-radius:10px;padding:8px 12px;font-weight:500;color:var(--algodao)}
+.checks input{accent-color:var(--medalha);width:20px;height:20px}
+.aviso{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--papel);color:var(--tinta);padding:14px 22px;border-radius:14px;z-index:60;font-weight:700;max-width:90vw;text-align:center}
+
+@media (max-width:760px){
+  .relogio b{font-size:32px}
+  .academia b{font-size:22px}
+  .rede span{display:none}
+  .ajuste{flex-direction:column;align-items:flex-start}
+  .item{flex-wrap:wrap}
+  .item .btns{width:100%;justify-content:flex-start}
+  .cartao h2{font-size:36px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ Carregamento ============ -->
+<section class="tela" id="telaBoot">
+  <div class="tela-inner">
+    <h1 class="marca">F2FACE</h1>
+    <p class="marca-sub" id="bootMsg">Preparando o tablet…</p>
+    <div class="barra" id="bootBarra"><i></i></div>
+    <div id="bootPronto" hidden>
+      <p class="local" id="bootLocal"></p>
+      <p class="marca-sub" id="bootDetalhe"></p>
+      <button class="btn-iniciar" id="btnIniciar">Iniciar check-in</button>
+    </div>
+    <div id="bootErro" hidden>
+      <div class="erro-box" id="bootErroTxt"></div>
+      <div class="acoes" style="margin-top:14px"><button class="btn primario" onclick="location.reload()">Tentar de novo</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Pareamento ============ -->
+<section class="tela" id="telaPar" hidden>
+  <div class="tela-inner">
+    <h1 class="marca">F2FACE</h1>
+    <p class="marca-sub">Conecte este tablet à academia com o código gerado pelo responsável.</p>
+    <form class="pareamento" id="formPar" autocomplete="off">
+      <div class="erro-box" id="parMsg" hidden></div>
+      <label class="campo">Código do tablet
+        <input class="codigo" id="parCodigo" placeholder="f2f_…" autocapitalize="off" spellcheck="false">
+      </label>
+      <div class="qr-view" id="qrView" hidden><video id="qrVideo" autoplay muted playsinline></video></div>
+      <div class="acoes">
+        <button type="button" class="btn leve" id="btnQR">Ler QR code</button>
+        <button type="submit" class="btn primario" id="btnParear">Conectar tablet</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ============ Quiosque ============ -->
+<section class="stage espelho" id="stage" data-estado="parado">
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="overlay"></canvas>
+  <div class="guia" aria-hidden="true"></div>
+  <div class="topo">
+    <div class="academia"><b id="topoAcademia">F2FACE</b><span id="topoUnidade"></span></div>
+    <div class="rede" id="rede"><i></i><span id="redeTxt">Conectado</span></div>
+    <div class="relogio"><b id="hora">--:--</b><span id="data"></span></div>
+    <button class="icone" id="btnTela" aria-label="Tela cheia">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+    <button class="icone" id="btnEquipe" aria-label="Entrar no modo equipe">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+    </button>
+  </div>
+  <div class="rodape">
+    <div class="status" role="status" aria-live="polite"><span class="ponto"></span><span id="statusTxt">Posicione o rosto dentro do oval</span></div>
+    <div class="contagem">Check-ins hoje neste tablet: <b id="contHoje">0</b></div>
+  </div>
+</section>
+
+<!-- ============ Cartão ============ -->
+<div class="resultado" id="resultado" hidden>
+  <div class="cartao">
+    <div class="avatar" id="rAvatar"></div>
+    <p class="tipo" id="rTipo"></p>
+    <h2 id="rNome"></h2>
+    <p class="meta" id="rMeta"></p>
+    <div class="graduacao" id="rGrad" hidden>
+      <div class="gbar" id="rGbar"><span class="listra" id="rListra" hidden></span><span class="ponta" id="rPonta"></span></div>
+      <p class="gnome" id="rGnome"></p>
+    </div>
+    <div class="temporizador"><i id="rTempo"></i></div>
+  </div>
+</div>
+
+<!-- ============ Licença bloqueada ============ -->
+<div class="bloqueio" id="bloqueio" hidden>
+  <div>
+    <h2>Check-in pausado</h2>
+    <p>A licença desta academia está suspensa ou o período de teste terminou. Fale com o responsável pela academia.</p>
+  </div>
+</div>
+
+<!-- ============ Login da equipe ============ -->
+<div class="modal" id="mLogin" hidden>
+  <form class="folha" id="formLogin" autocomplete="off">
+    <h3>Modo equipe</h3>
+    <p>Professor ou admin: entre para cadastrar rostos e ver as presenças desta unidade.</p>
+    <div class="pilha">
+      <label class="campo">E-mail<input type="email" id="lEmail" required autocomplete="off"></label>
+      <label class="campo">Senha<input type="password" id="lSenha" required autocomplete="off"></label>
+    </div>
+    <p class="msg-erro" id="lErro"></p>
+    <div class="linha-fim">
+      <button type="button" class="btn leve" id="lCancelar">Cancelar</button>
+      <button type="submit" class="btn primario" id="lEntrar">Entrar</button>
+    </div>
+  </form>
+</div>
+
+<!-- ============ Novo aluno ============ -->
+<div class="modal" id="mAluno" hidden>
+  <form class="folha" id="formAluno" autocomplete="off">
+    <h3>Novo aluno</h3>
+    <p>Informe o CPF ou o e-mail. Pelo menos um dos dois é obrigatório.</p>
+    <div class="pilha">
+      <label class="campo">Nome completo<input id="aNome" required maxlength="80"></label>
+      <label class="campo">CPF<input id="aCpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></label>
+      <label class="campo">E-mail<input id="aEmail" type="email" maxlength="120"></label>
+      <label class="campo">Data de nascimento<input id="aNasc" type="date"></label>
+      <div class="campo">Modalidades<div class="checks" id="aMods"></div></div>
+    </div>
+    <p class="msg-erro" id="aErro"></p>
+    <div class="linha-fim">
+      <button type="button" class="btn leve" id="aCancelar">Cancelar</button>
+      <button type="submit" class="btn primario" id="aSalvar">Salvar e cadastrar rosto</button>
+    </div>
+  </form>
+</div>
+
+<!-- ============ Captura do rosto ============ -->
+<div class="modal" id="mCap" hidden>
+  <div class="folha cap-folha">
+    <h3 id="capTitulo">Cadastrar rosto</h3>
+    <div id="capConsent" class="pilha">
+      <p style="margin:0;color:var(--muted)">O rosto é um dado biométrico. Antes de cadastrar, registre a autorização.</p>
+      <label class="check"><input type="checkbox" id="capOk"><span id="capOkTxt"></span></label>
+      <label class="campo"><span id="capQuemLbl">Nome de quem autorizou</span><input id="capQuem" maxlength="80"></label>
+      <p class="msg-erro" id="capErro"></p>
+      <div class="linha-fim" style="margin-top:0">
+        <button class="btn leve" id="capCancelar1">Cancelar</button>
+        <button class="btn primario" id="capComecar">Começar leitura</button>
+      </div>
+    </div>
+    <div id="capLeitura" hidden>
+      <p style="margin:0 0 12px;color:var(--muted)">O aluno deve ficar sozinho em frente à câmera, com o rosto bem iluminado.</p>
+      <div class="cap-view espelho" id="capView">
+        <video id="capVideo" autoplay muted playsinline></video>
+        <div class="guia" aria-hidden="true"></div>
+      </div>
+      <div class="passos" id="capPassos"></div>
+      <p class="cap-msg" id="capMsg" aria-live="polite"></p>
+      <div class="linha-fim"><button class="btn leve" id="capCancelar2">Cancelar</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modo equipe ============ -->
+<section class="equipe" id="equipe" hidden>
+  <header>
+    <div class="quem"><b id="eUnidade">Unidade</b><span id="eQuem"></span></div>
+    <button class="btn primario" id="btnSair">Voltar ao check-in</button>
+  </header>
+  <nav class="abas" role="tablist">
+    <button role="tab" aria-selected="true" data-aba="alunos">Alunos</button>
+    <button role="tab" aria-selected="false" data-aba="presencas">Presenças de hoje</button>
+    <button role="tab" aria-selected="false" data-aba="ajustes" data-so-admin>Ajustes da leitura</button>
+    <button role="tab" aria-selected="false" data-aba="tablet">Este tablet</button>
+  </nav>
+  <main>
+    <div class="painel" data-painel="alunos">
+      <div class="barra-ferr">
+        <label class="campo">Buscar aluno<input id="busca" placeholder="Nome, CPF ou e-mail"></label>
+        <button class="btn primario" id="btnNovoAluno" data-so-admin>Novo aluno</button>
+      </div>
+      <div class="lista" id="listaAlunos"></div>
+    </div>
+
+    <div class="painel" data-painel="presencas" hidden>
+      <div class="barra-ferr">
+        <div style="flex:1"><b id="pResumo"></b></div>
+        <button class="btn leve" id="btnAtualizarPres">Atualizar</button>
+      </div>
+      <div class="lista" id="listaPres"></div>
+    </div>
+
+    <div class="painel" data-painel="ajustes" hidden>
+      <div class="bloco">
+        <div class="ajuste"><div><b>Rigor do reconhecimento</b><p>Menor é mais rigoroso: evita confundir alunos parecidos, mas pode pedir mais tentativas.</p></div>
+          <div><input type="range" id="cRigor" min="0.35" max="0.60" step="0.01"> <output id="oRigor"></output></div></div>
+        <div class="ajuste"><div><b>Confirmações seguidas</b><p>Leituras iguais em sequência antes de registrar.</p></div>
+          <div><input type="range" id="cConf" min="2" max="8" step="1"> <output id="oConf"></output></div></div>
+        <div class="ajuste"><div><b>Distância mínima</b><p>Aumente se alunos da fila estiverem sendo lidos.</p></div>
+          <div><input type="range" id="cDist" min="0.08" max="0.35" step="0.01"> <output id="oDist"></output></div></div>
+        <div class="ajuste"><div><b>Tempo do cartão</b><p>Segundos que o cartão de boas-vindas fica na tela.</p></div>
+          <div><input type="range" id="cTempo" min="2" max="8" step="1"> <output id="oTempo"></output></div></div>
+        <div class="ajuste"><div><b>Espelhar câmera</b><p>Mostra a imagem como um espelho.</p></div><input type="checkbox" id="cEspelhar"></div>
+        <div class="ajuste"><div><b>Som</b><p>Bipe ao registrar a presença.</p></div><input type="checkbox" id="cSom"></div>
+        <div class="ajuste"><div><b>Falar o nome</b><p>O tablet diz "Bom treino, Nome".</p></div><input type="checkbox" id="cVoz"></div>
+      </div>
+      <div class="linha-fim"><button class="btn primario" id="btnSalvarAjustes">Salvar ajustes da unidade</button></div>
+    </div>
+
+    <div class="painel" data-painel="tablet" hidden>
+      <div class="bloco"><dl class="dados" id="dadosTablet"></dl></div>
+      <div class="acoes">
+        <button class="btn leve" id="btnSync">Sincronizar agora</button>
+        <button class="btn perigo" id="btnDesconectar" data-so-admin>Desconectar este tablet</button>
+      </div>
+    </div>
+  </main>
+</section>
+
+<div class="aviso" id="aviso" hidden></div>
+
+<script>
+/* ==========================================================
+   F2FACE · Tablet (fase 2)
+   ========================================================== */
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/';
+const AMOSTRAS = 5;
+const CHAVE_CODIGO = 'f2face_tablet_codigo';
+const CFG_PADRAO = { rigor:0.48, confirmacoes:3, distancia_min:0.16, tempo_cartao:4, som:true, voz:true, espelhar:true };
+const INATIVIDADE_EQUIPE_MS = 5 * 60 * 1000;
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const iniciais = n => String(n||'?').trim().split(/\s+/).filter(Boolean).map((p,i,a) => (i===0||i===a.length-1) ? p[0] : '').join('').slice(0,2).toUpperCase();
+const primeiroNome = n => String(n||'').trim().split(/\s+/)[0] || '';
+const soDigitos = s => String(s||'').replace(/\D/g,'');
+const mascaraCpf = c => c && c.length === 11 ? `***.${c.slice(3,6)}.${c.slice(6,9)}-**` : '';
+function comPrazo(p, ms = 8000){ return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]); }
+const ehTabletInvalido = e => /tablet_invalido/.test(e?.message || '');
+
+let avisoT;
+function aviso(msg){ const t = $('#aviso'); t.textContent = msg; t.hidden = false; clearTimeout(avisoT); avisoT = setTimeout(() => t.hidden = true, 3600); }
+
+/* ---------- Clientes do banco ---------- */
+// Tablet: sem login, só com o código. Equipe: login em memória (some ao sair ou recarregar).
+const sbTablet = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth:{ persistSession:false, autoRefreshToken:false, storageKey:'f2face_tablet_anon' } });
+const sbEquipe = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth:{ persistSession:false, autoRefreshToken:true, storageKey:'f2face_equipe' } });
+
+/* ---------- Cache local (IndexedDB) ---------- */
+const idb = {
+  db:null,
+  abrir(){ if (this.db) return Promise.resolve(this.db);
+    return new Promise((res, rej) => { const r = indexedDB.open('f2face_tablet', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => res(this.db = r.result); r.onerror = () => rej(r.error); }); },
+  async get(k){ try { const db = await this.abrir(); return await new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); } catch(e){ return undefined; } },
+  async set(k, v){ try { const db = await this.abrir(); await new Promise((res, rej) => { const t = db.transaction('kv','readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch(e){} },
+  async limpar(){ try { const db = await this.abrir(); await new Promise(res => { const t = db.transaction('kv','readwrite'); t.objectStore('kv').clear(); t.oncomplete = res; }); } catch(e){} }
+};
+
+/* ---------- Estado ---------- */
+let codigo = null, sessao = null, cfg = { ...CFG_PADRAO };
+let rostos = [], mapaAlunos = new Map(), matcher = null;
+let fila = [], online = true, contHoje = 0;
+let stream = null, modelosProntos = false, promessaModelos = null, detOpts = null;
+let vista = 'boot';           // boot | quiosque | equipe
+let pausado = false, streak = { id:null, n:0 }, desconhecidos = 0;
+const recentes = new Map();
+
+/* ---------- Relógio (fuso da academia) ---------- */
+function fuso(){ return sessao?.fuso || 'America/Sao_Paulo'; }
+function hojeAcademia(){ return new Intl.DateTimeFormat('en-CA', { timeZone:fuso(), year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()); }
+function horaAcademia(d = new Date()){ return new Intl.DateTimeFormat('pt-BR', { timeZone:fuso(), hour:'2-digit', minute:'2-digit' }).format(d); }
+function relogio(){
+  $('#hora').textContent = horaAcademia();
+  $('#data').textContent = new Intl.DateTimeFormat('pt-BR', { timeZone:fuso(), weekday:'long', day:'numeric', month:'long' }).format(new Date());
+}
+setInterval(relogio, 1000); relogio();
+
+/* ==========================================================
+   INICIALIZAÇÃO
+   ========================================================== */
+function bootMsg(t, pct){ $('#bootMsg').textContent = t; if (pct != null) $('#bootBarra i').style.width = pct + '%'; }
+function bootErro(html){ $('#bootBarra').hidden = true; $('#bootPronto').hidden = true; $('#bootErro').hidden = false; $('#bootErroTxt').innerHTML = html; }
+
+function carregarModelos(){
+  if (promessaModelos) return promessaModelos;
+  promessaModelos = (async () => {
+    if (typeof faceapi === 'undefined') throw new Error('biblioteca');
+    try { await faceapi.tf.setBackend('webgl'); } catch(e){}
+    await faceapi.tf.ready();
+    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    detOpts = new faceapi.SsdMobilenetv1Options({ minConfidence:0.5, maxResults:5 });
+    modelosProntos = true;
+  })();
+  return promessaModelos;
+}
+
+function lerCodigoDoLink(){
+  const m = location.hash.match(/codigo=(f2f_[0-9a-f]{48})/i);
+  if (m){ localStorage.setItem(CHAVE_CODIGO, m[1].toLowerCase()); history.replaceState(null, '', location.pathname + location.search); }
+}
+
+async function boot(){
+  if (typeof supabase === 'undefined' || typeof faceapi === 'undefined')
+    return bootErro('<b>As bibliotecas não carregaram.</b><br>Verifique a internet do tablet.');
+  lerCodigoDoLink();
+  codigo = localStorage.getItem(CHAVE_CODIGO);
+  fila = (await idb.get('fila')) || [];
+  contHoje = (await idb.get('cont_' + new Date().toDateString())) || 0;
+  carregarModelos().catch(() => {});
+  if (!codigo) return mostrarPareamento(sessionStorage.getItem('f2face_msg'));
+  await iniciarComCodigo();
+}
+
+async function iniciarComCodigo(){
+  $('#telaBoot').hidden = false; $('#bootBarra').hidden = false;
+  bootMsg('Conectando à academia…', 15);
+  if (!(await atualizarSessao(true))) return;
+  bootMsg('Carregando o reconhecimento facial…', 40);
+  try { await carregarModelos(); }
+  catch(e){ return bootErro('<b>O reconhecimento facial não carregou.</b><br>Verifique a internet do tablet.'); }
+  bootMsg('Baixando os rostos dos alunos…', 80);
+  await carregarRostos();
+  bootMsg('', 100);
+  $('#bootBarra').hidden = true;
+  $('#bootMsg').hidden = true;
+  $('#bootLocal').textContent = `${sessao.organizacao} · ${sessao.unidade}`;
+  $('#bootDetalhe').textContent = rostos.length
+    ? `${rostos.length} ${rostos.length === 1 ? 'aluno pronto' : 'alunos prontos'} para o check-in.`
+    : 'Nenhum rosto cadastrado ainda. Use o modo equipe para cadastrar.';
+  $('#bootPronto').hidden = false;
+  $('#btnIniciar').focus();
+}
+
+$('#btnIniciar').addEventListener('click', async () => {
+  destravarAudio();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} } });
+  } catch(e){
+    const seguro = location.protocol === 'https:' || ['localhost','127.0.0.1'].includes(location.hostname);
+    return bootErro(seguro ? '<b>A câmera foi bloqueada.</b><br>Libere a câmera nas permissões do navegador para este site.'
+                           : '<b>A câmera só funciona em endereço seguro (https).</b>');
+  }
+  const v = $('#video'); v.srcObject = stream; await v.play().catch(() => {});
+  $('#telaBoot').hidden = true;
+  vista = 'quiosque';
+  telaCheia(); manterAcesa(); pintarRede(); $('#contHoje').textContent = contHoje;
+  loopQuiosque();
+  setInterval(() => atualizarSessao(false), 60000);
+  setInterval(enviarFila, 20000);
+  enviarFila();
+});
+window.addEventListener('online', () => { enviarFila(); atualizarSessao(false); });
+window.addEventListener('offline', () => { online = false; pintarRede(); });
+
+/* ---------- Sessão do tablet ---------- */
+async function atualizarSessao(inicial){
+  try {
+    const { data, error } = await comPrazo(sbTablet.rpc('tablet_sessao', { p_token:codigo }));
+    if (error) throw error;
+    const versaoAntes = sessao?.rostos_versao;
+    aplicarSessao(data);
+    await idb.set('sessao', data);
+    online = true; pintarRede();
+    if (!inicial && versaoAntes !== data.rostos_versao) carregarRostos();
+    return true;
+  } catch(e){
+    if (ehTabletInvalido(e)){ desparear('Este tablet não está mais autorizado. Peça um novo código ao responsável da academia.'); return false; }
+    online = false; pintarRede();
+    const cache = await idb.get('sessao');
+    if (cache?.tablet_id){ if (inicial) aplicarSessao(cache); return true; }
+    if (inicial) bootErro('<b>Sem conexão com o servidor.</b><br>Verifique a internet do tablet.');
+    return false;
+  }
+}
+
+function aplicarSessao(d){
+  const rigorAntes = cfg.rigor;
+  sessao = d;
+  cfg = { ...CFG_PADRAO, ...(d.config || {}) };
+  $('#topoAcademia').textContent = d.organizacao;
+  $('#topoUnidade').textContent = d.unidade;
+  $('#stage').classList.toggle('espelho', !!cfg.espelhar);
+  $('#capView').classList.toggle('espelho', !!cfg.espelhar);
+  $('#bloqueio').hidden = d.operando !== false;
+  if (rigorAntes !== cfg.rigor) montarMatcher();
+  relogio();
+}
+
+function desparear(msg){
+  localStorage.removeItem(CHAVE_CODIGO);
+  idb.limpar();
+  if (msg) sessionStorage.setItem('f2face_msg', msg);
+  location.replace(location.pathname);
+}
+
+/* ---------- Rostos ---------- */
+async function carregarRostos(){
+  const cache = await idb.get('rostos');
+  if (cache && sessao && cache.tablet_id === sessao.tablet_id && cache.versao === sessao.rostos_versao){
+    rostos = cache.lista; montarMatcher(); return;
+  }
+  try {
+    const todos = [], passo = 1000;
+    for (let de = 0; ; de += passo){
+      const { data, error } = await comPrazo(sbTablet.rpc('tablet_rostos', { p_token:codigo }).range(de, de + passo - 1), 25000);
+      if (error) throw error;
+      todos.push(...data);
+      if (data.length < passo) break;
+    }
+    rostos = todos;
+    await idb.set('rostos', { tablet_id:sessao.tablet_id, versao:sessao.rostos_versao, lista:todos });
+    online = true;
+  } catch(e){
+    if (ehTabletInvalido(e)) return desparear('Este tablet não está mais autorizado.');
+    if (cache && cache.tablet_id === sessao?.tablet_id) rostos = cache.lista;
+    online = false;
+  }
+  pintarRede(); montarMatcher();
+}
+
+function montarMatcher(){
+  mapaAlunos = new Map(rostos.map(r => [r.aluno_id, r]));
+  if (!modelosProntos){ matcher = null; return; }
+  const rotulados = rostos.filter(r => Array.isArray(r.descritores) && r.descritores.length)
+    .map(r => new faceapi.LabeledFaceDescriptors(r.aluno_id, r.descritores.map(d => new Float32Array(d))));
+  matcher = rotulados.length ? new faceapi.FaceMatcher(rotulados, cfg.rigor) : null;
+}
+
+/* ---------- Pareamento ---------- */
+function mostrarPareamento(msg){
+  sessionStorage.removeItem('f2face_msg');
+  $('#telaBoot').hidden = true; $('#telaPar').hidden = false;
+  if (msg){ $('#parMsg').hidden = false; $('#parMsg').textContent = msg; }
+  $('#parCodigo').focus();
+}
+function extrairCodigo(txt){ const m = String(txt||'').replace(/\s+/g,'').match(/f2f_[0-9a-f]{48}/i); return m ? m[0].toLowerCase() : null; }
+
+$('#formPar').addEventListener('submit', async e => {
+  e.preventDefault();
+  pararQR();
+  const c = extrairCodigo($('#parCodigo').value);
+  const msg = $('#parMsg');
+  if (!c){ msg.hidden = false; msg.textContent = 'Código inválido. Ele começa com f2f_ e tem 52 caracteres.'; return; }
+  const b = $('#btnParear'); b.disabled = true; b.textContent = 'Conectando…';
+  try {
+    const { error } = await comPrazo(sbTablet.rpc('tablet_sessao', { p_token:c }));
+    if (error) throw error;
+    localStorage.setItem(CHAVE_CODIGO, c); codigo = c;
+    $('#telaPar').hidden = true;
+    await iniciarComCodigo();
+  } catch(err){
+    msg.hidden = false;
+    msg.textContent = ehTabletInvalido(err) ? 'Este código não é válido ou já foi desativado. Gere um novo no painel da academia.'
+                                            : 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
+  } finally { b.disabled = false; b.textContent = 'Conectar tablet'; }
+});
+
+let qrStream = null, qrAtivo = false;
+$('#btnQR').addEventListener('click', async () => {
+  if (!('BarcodeDetector' in window)) return aviso('Este navegador não lê QR code. Digite ou cole o código.');
+  try {
+    const det = new BarcodeDetector({ formats:['qr_code'] });
+    qrStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } } });
+    const v = $('#qrVideo'); v.srcObject = qrStream; await v.play().catch(() => {});
+    $('#qrView').hidden = false; qrAtivo = true;
+    while (qrAtivo){
+      try {
+        const cods = await det.detect(v);
+        const c = cods.length ? extrairCodigo(cods[0].rawValue) : null;
+        if (c){ $('#parCodigo').value = c; pararQR(); $('#formPar').requestSubmit(); return; }
+      } catch(e){}
+      await sleep(250);
+    }
+  } catch(e){ pararQR(); aviso('Não foi possível abrir a câmera para ler o QR code.'); }
+});
+function pararQR(){ qrAtivo = false; if (qrStream){ qrStream.getTracks().forEach(t => t.stop()); qrStream = null; } $('#qrView').hidden = true; }
+
+/* ==========================================================
+   QUIOSQUE
+   ========================================================== */
+function estado(e, txt){
+  const st = $('#stage'); if (st.dataset.estado !== e) st.dataset.estado = e;
+  const t = $('#statusTxt'); if (t.textContent !== txt) t.textContent = txt;
+}
+function pintarRede(){
+  const r = $('#rede'), off = !online || fila.length > 0;
+  r.classList.toggle('off', off);
+  $('#redeTxt').textContent = !online ? `Sem internet${fila.length ? ` · ${fila.length} na fila` : ''}`
+                            : fila.length ? `Enviando ${fila.length}…` : 'Conectado';
+}
+
+async function loopQuiosque(){
+  const v = $('#video');
+  if (vista === 'quiosque' && !pausado && modelosProntos && sessao?.operando !== false && v.readyState >= 2){
+    try {
+      const dets = await faceapi.detectAllFaces(v, detOpts).withFaceLandmarks().withFaceDescriptors();
+      if (vista === 'quiosque' && !pausado) tratarDeteccoes(dets, v);
+    } catch(e){ console.error(e); }
+  }
+  setTimeout(loopQuiosque, 120);
+}
+
+function tratarDeteccoes(dets, v){
+  const cv = $('#overlay');
+  if (cv.width !== v.videoWidth){ cv.width = v.videoWidth; cv.height = v.videoHeight; }
+  const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cv.width, cv.height);
+  const semRostos = 'Nenhum rosto cadastrado. Use o modo equipe para cadastrar.';
+
+  if (!dets.length){ streak = { id:null, n:0 }; desconhecidos = 0;
+    return rostos.length ? estado('parado', 'Posicione o rosto dentro do oval') : estado('vazio', semRostos); }
+
+  const melhor = dets.reduce((a, b) => a.detection.box.area > b.detection.box.area ? a : b);
+  const caixa = melhor.detection.box;
+  const perto = caixa.width / v.videoWidth >= cfg.distancia_min;
+  cantos(ctx, caixa, perto ? '#E0B341' : '#6AA8E8');
+  if (!perto){ streak = { id:null, n:0 }; return estado('longe', 'Chegue um pouco mais perto'); }
+  if (!matcher) return estado('vazio', semRostos);
+
+  const m = matcher.findBestMatch(melhor.descriptor);
+  if (m.label === 'unknown'){
+    streak = { id:null, n:0 }; desconhecidos++;
+    if (desconhecidos >= Math.max(6, cfg.confirmacoes * 2)){ desconhecidos = 0; mostrarCartao({ tipo:'erro', titulo:'Rosto não reconhecido', nome:'Tente de novo', meta:'Olhe direto para a câmera. Se continuar, procure a recepção.' }); }
+    else estado('lendo', 'Reconhecendo…');
+    return;
+  }
+  desconhecidos = 0;
+  const ult = recentes.get(m.label);
+  if (ult && Date.now() - ult < 20000) return estado('parado', 'Check-in feito. Bom treino!');
+  streak = streak.id === m.label ? { id:m.label, n:streak.n + 1 } : { id:m.label, n:1 };
+  estado('lendo', 'Reconhecendo…');
+  if (streak.n >= cfg.confirmacoes){ streak = { id:null, n:0 }; checkin(m.label, m.distance); }
+}
+
+function cantos(ctx, b, cor){
+  const L = Math.min(b.width, b.height) * 0.22, r = 10;
+  ctx.strokeStyle = cor; ctx.lineWidth = Math.max(4, b.width * 0.018); ctx.lineCap = 'round';
+  const x1 = b.x, y1 = b.y, x2 = b.x + b.width, y2 = b.y + b.height;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1+L); ctx.arcTo(x1,y1,x1+L,y1,r); ctx.lineTo(x1+L,y1);
+  ctx.moveTo(x2-L, y1); ctx.arcTo(x2,y1,x2,y1+L,r); ctx.lineTo(x2,y1+L);
+  ctx.moveTo(x2, y2-L); ctx.arcTo(x2,y2,x2-L,y2,r); ctx.lineTo(x2-L,y2);
+  ctx.moveTo(x1+L, y2); ctx.arcTo(x1,y2,x1,y2-L,r); ctx.lineTo(x1,y2-L);
+  ctx.stroke();
+}
+
+/* ---------- Check-in ---------- */
+async function checkin(alunoId, distancia){
+  recentes.set(alunoId, Date.now());
+  const aluno = mapaAlunos.get(alunoId) || { nome:'Aluno' };
+  const item = { aluno_id:alunoId, semelhanca:Math.round((1 - distancia) * 100), momento:new Date().toISOString() };
+  pausado = true;
+  estado('lendo', `Confirmando ${primeiroNome(aluno.nome)}…`);
+  try {
+    const r = await enviarCheckin(item);
+    tratarResposta(r, aluno);
+  } catch(e){
+    if (ehTabletInvalido(e)) return desparear('Este tablet foi desconectado pela academia.');
+    fila.push(item); await idb.set('fila', fila);
+    online = false; pintarRede();
+    somarHoje();
+    mostrarCartao({ tipo:'offline', titulo:'Leitura guardada', nome:aluno.nome,
+                    meta:'Sem internet agora. A presença será enviada assim que a conexão voltar.' });
+  }
+}
+
+async function enviarCheckin(item){
+  const { data, error } = await comPrazo(sbTablet.rpc('tablet_checkin', {
+    p_token:codigo, p_aluno_id:item.aluno_id, p_semelhanca:item.semelhanca, p_momento:item.momento }), 7000);
+  if (error) throw error;
+  online = true; pintarRede();
+  return data;
+}
+
+let enviando = false;
+async function enviarFila(){
+  if (enviando || !fila.length || !codigo) return;
+  enviando = true;
+  try {
+    while (fila.length){ await enviarCheckin(fila[0]); fila.shift(); await idb.set('fila', fila); }
+  } catch(e){
+    if (ehTabletInvalido(e)) return desparear('Este tablet foi desconectado pela academia.');
+    online = false;
+  } finally { enviando = false; pintarRede(); }
+}
+
+function somarHoje(){ contHoje++; $('#contHoje').textContent = contHoje; idb.set('cont_' + new Date().toDateString(), contHoje); }
+
+function tratarResposta(r, aluno){
+  const nome = r?.aluno?.nome || aluno.nome;
+  const grad = r?.graduacao || null;
+  switch (r?.status){
+    case 'registrada':
+      somarHoje();
+      falar(`Bom treino, ${primeiroNome(nome)}`);
+      if (r.horario && r.confirmada === false)
+        return mostrarCartao({ tipo:'ok', titulo:'Check-in feito', nome, meta:`Aula das ${r.horario}. Sua presença conta quando a aula começar.`, grad });
+      return mostrarCartao({ tipo:'ok', titulo:'Presença registrada', nome, meta: r.horario ? `Aula das ${r.horario}` : `Hoje às ${horaAcademia()}`, grad });
+    case 'ja_registrada':
+      return mostrarCartao({ tipo:'info', titulo:'Você já fez check-in', nome, grad,
+        meta: r.horario ? `Aula das ${r.horario}` : (r.registrado_em ? `Hoje às ${horaAcademia(new Date(r.registrado_em))}` : 'Hoje') });
+    case 'fora_da_janela': {
+      const p = r.proximo;
+      const meta = p ? (p.abre_em_min > 0
+                          ? `O check-in da aula das ${p.horario} abre em ${tempoTxt(p.abre_em_min)}.`
+                          : `Aula das ${p.horario}.`)
+                     : 'Não há mais aulas hoje para você nesta unidade.';
+      return mostrarCartao({ tipo:'aviso', titulo:'Fora do horário de check-in', nome, meta });
+    }
+    case 'nao_liberado':
+      return mostrarCartao({ tipo:'erro', titulo:'Treino não liberado nesta unidade', nome, meta:'Procure a recepção.' });
+    case 'aluno_inativo':
+      return mostrarCartao({ tipo:'erro', titulo:'Matrícula inativa', nome, meta:'Procure a recepção.' });
+    case 'aluno_nao_encontrado':
+      carregarRostos();
+      return mostrarCartao({ tipo:'erro', titulo:'Cadastro não encontrado', nome, meta:'Procure a recepção.' });
+    case 'licenca_bloqueada':
+      $('#bloqueio').hidden = false; if (sessao) sessao.operando = false; pausado = false; return;
+    default:
+      return mostrarCartao({ tipo:'erro', titulo:'Não foi possível registrar', nome, meta:'Tente de novo ou procure a recepção.' });
+  }
+}
+function tempoTxt(min){ if (min < 60) return `${min} min`; const h = Math.floor(min / 60), m = min % 60; return m ? `${h}h${String(m).padStart(2,'0')}` : `${h}h`; }
+
+/* ---------- Cartão de boas-vindas ---------- */
+function luminancia(hex){
+  const m = String(hex||'').replace('#','').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return 1;
+  const [r,g,b] = m.slice(1).map(x => parseInt(x,16) / 255);
+  return 0.2126*r + 0.7152*g + 0.0722*b;
+}
+function desenharGraduacao(g){
+  const box = $('#rGrad');
+  if (!g){ box.hidden = true; return; }
+  const bar = $('#rGbar');
+  bar.style.setProperty('--g', g.cor || '#DDDDDD');
+  bar.style.setProperty('--p', luminancia(g.cor) < 0.15 ? '#C62828' : '#1A1A1A');   // ponta vermelha em graduações escuras
+  const listra = $('#rListra');
+  if (g.cor_secundaria){ listra.hidden = false; bar.style.setProperty('--g2', g.cor_secundaria); } else listra.hidden = true;
+  const graus = Math.max(0, Math.min(12, g.grau || 0));
+  $('#rPonta').innerHTML = '<i></i>'.repeat(graus);
+  $('#rGnome').textContent = graus ? `${g.nome}, ${graus} ${graus === 1 ? 'grau' : 'graus'}` : g.nome;
+  box.hidden = false;
+}
+
+function mostrarCartao({ tipo, titulo, nome, meta, grad }){
+  pausado = true;
+  const cv = $('#overlay'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+  const r = $('#resultado');
+  r.className = 'resultado r-' + tipo;
+  $('#rAvatar').textContent = tipo === 'erro' && !grad && nome === 'Tente de novo' ? '?' : iniciais(nome);
+  $('#rTipo').textContent = titulo;
+  $('#rNome').textContent = nome;
+  $('#rMeta').textContent = meta || '';
+  desenharGraduacao(grad);
+  bip(tipo);
+  const s = tipo === 'erro' || tipo === 'aviso' ? Math.min(cfg.tempo_cartao + 1, 5) : cfg.tempo_cartao;
+  const t = $('#rTempo'); t.style.animation = 'none'; void t.offsetWidth; t.style.animation = `esvazia ${s}s linear forwards`;
+  r.hidden = false;
+  setTimeout(() => { r.hidden = true; pausado = false; estado('parado', 'Posicione o rosto dentro do oval'); }, s * 1000);
+}
+
+/* ---------- Som e voz ---------- */
+let audio;
+function destravarAudio(){ try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch(e){} }
+function bip(tipo){
+  if (!audio || !cfg.som) return;
+  const seq = tipo === 'ok' ? [[784,0],[1175,.13]] : tipo === 'info' || tipo === 'offline' ? [[988,0]] : [[330,0],[247,.16]];
+  seq.forEach(([f, t]) => {
+    const o = audio.createOscillator(), g = audio.createGain(), s = audio.currentTime + t;
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.3, s + .02); g.gain.exponentialRampToValueAtTime(0.0001, s + .2);
+    o.connect(g).connect(audio.destination); o.start(s); o.stop(s + .22);
+  });
+}
+function falar(txt){
+  if (!cfg.voz || !('speechSynthesis' in window)) return;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(txt); u.lang = 'pt-BR'; u.rate = 1.05; speechSynthesis.speak(u); } catch(e){}
+}
+
+/* ---------- Tela cheia / sempre acesa ---------- */
+function telaCheia(){ const d = document.documentElement; try { (d.requestFullscreen || d.webkitRequestFullscreen)?.call(d)?.catch?.(() => {}); } catch(e){} }
+$('#btnTela').addEventListener('click', () => document.fullscreenElement ? document.exitFullscreen() : telaCheia());
+async function manterAcesa(){ try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch(e){} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && vista !== 'boot'){ manterAcesa(); atualizarSessao(false); } });
+
+/* ==========================================================
+   MODO EQUIPE
+   ========================================================== */
+let equipe = null;   // { user, org, unidade, admin, modalidades }
+let alunosEquipe = [], rostosEquipe = new Map();
+let timerInatividade;
+
+$('#btnEquipe').addEventListener('click', () => { $('#lErro').textContent = ''; $('#formLogin').reset(); $('#mLogin').hidden = false; $('#lEmail').focus(); });
+$('#lCancelar').addEventListener('click', () => $('#mLogin').hidden = true);
+$('#formLogin').addEventListener('submit', async e => {
+  e.preventDefault();
+  const b = $('#lEntrar'); b.disabled = true; b.textContent = 'Entrando…'; $('#lErro').textContent = '';
+  try {
+    const { data, error } = await comPrazo(sbEquipe.auth.signInWithPassword({ email:$('#lEmail').value.trim(), password:$('#lSenha').value }), 10000);
+    if (error) throw error;
+    const { data:u } = await sbEquipe.from('unidades').select('id,nome,org_id,config_tablet').eq('id', sessao.unidade_id).maybeSingle();
+    if (!u){ await sbEquipe.auth.signOut(); throw new Error('sem_acesso'); }
+    const { data:admin } = await sbEquipe.rpc('eh_admin', { p_org:u.org_id });
+    const { data:mods } = await sbEquipe.from('modalidades').select('id,nome').eq('org_id', u.org_id).eq('ativa', true).order('nome');
+    equipe = { user:data.user, org:u.org_id, unidade:u, admin:!!admin, modalidades:mods || [] };
+    $('#mLogin').hidden = true;
+    abrirEquipe();
+  } catch(err){
+    $('#lErro').textContent = err.message === 'sem_acesso' ? 'Sua conta não tem acesso a esta unidade.'
+      : /invalid/i.test(err.message) ? 'E-mail ou senha incorretos.'
+      : 'Não foi possível entrar. Verifique a internet.';
+  } finally { b.disabled = false; b.textContent = 'Entrar'; $('#lSenha').value = ''; }
+});
+
+function abrirEquipe(){
+  vista = 'equipe';
+  $('#equipe').hidden = false;
+  $('#eUnidade').textContent = `${sessao.unidade}`;
+  $('#eQuem').textContent = `${equipe.user.email} · ${equipe.admin ? 'admin' : 'professor'}`;
+  $$('[data-so-admin]').forEach(el => el.hidden = !equipe.admin);
+  trocarAba('alunos');
+  carregarAlunosEquipe();
+  reiniciarInatividade();
+}
+async function sairEquipe(){
+  clearTimeout(timerInatividade);
+  $('#equipe').hidden = true; $('#mAluno').hidden = true; fecharCaptura();
+  equipe = null; alunosEquipe = []; rostosEquipe = new Map(); $('#busca').value = '';
+  try { await sbEquipe.auth.signOut(); } catch(e){}
+  vista = 'quiosque'; streak = { id:null, n:0 };
+}
+$('#btnSair').addEventListener('click', sairEquipe);
+function reiniciarInatividade(){ clearTimeout(timerInatividade); if (equipe) timerInatividade = setTimeout(() => { sairEquipe(); aviso('Modo equipe encerrado por inatividade.'); }, INATIVIDADE_EQUIPE_MS); }
+['pointerdown','keydown'].forEach(ev => document.addEventListener(ev, () => { if (vista === 'equipe') reiniciarInatividade(); }));
+
+function trocarAba(aba){
+  $$('.abas button').forEach(b => b.setAttribute('aria-selected', b.dataset.aba === aba));
+  $$('[data-painel]').forEach(p => p.hidden = p.dataset.painel !== aba);
+  if (aba === 'presencas') carregarPresencas();
+  if (aba === 'ajustes') mostrarAjustes();
+  if (aba === 'tablet') mostrarTablet();
+}
+$$('.abas button').forEach(b => b.addEventListener('click', () => trocarAba(b.dataset.aba)));
+
+/* ---------- Alunos ---------- */
+async function carregarAlunosEquipe(){
+  $('#listaAlunos').innerHTML = '<div class="vazio">Carregando…</div>';
+  const U = sessao.unidade_id;
+  const [al, ro] = await Promise.all([
+    sbEquipe.from('alunos').select('id,nome,cpf,email,nascimento,status,unidade_id,unidades_liberadas')
+      .eq('org_id', equipe.org).or(`unidade_id.eq.${U},unidades_liberadas.cs.{${U}}`).order('nome').limit(2000),
+    sbEquipe.from('rostos').select('aluno_id,atualizado_em').eq('org_id', equipe.org).limit(5000)
+  ]);
+  if (al.error){ $('#listaAlunos').innerHTML = '<div class="vazio">Não foi possível carregar os alunos. Verifique a internet.</div>'; return; }
+  alunosEquipe = al.data || [];
+  rostosEquipe = new Map((ro.data || []).map(r => [r.aluno_id, r]));
+  pintarAlunos();
+}
+
+function pintarAlunos(){
+  const q = $('#busca').value.trim().toLowerCase(), qd = soDigitos(q);
+  const lista = alunosEquipe.filter(a => !q || a.nome.toLowerCase().includes(q) || (a.email || '').includes(q) || (qd.length >= 3 && (a.cpf || '').includes(qd)));
+  if (!lista.length){
+    $('#listaAlunos').innerHTML = `<div class="vazio">${alunosEquipe.length ? 'Nenhum aluno encontrado.' : (equipe.admin ? 'Nenhum aluno nesta unidade. Toque em Novo aluno.' : 'Nenhum aluno nesta unidade.')}</div>`;
+    return;
+  }
+  $('#listaAlunos').innerHTML = lista.slice(0, 300).map(a => {
+    const temRosto = rostosEquipe.has(a.id);
+    const doc = a.cpf ? mascaraCpf(a.cpf) : (a.email || '');
+    return `<div class="item">
+      <span class="ini">${esc(iniciais(a.nome))}</span>
+      <div class="txt"><b>${esc(a.nome)}${a.status !== 'ativo' ? '<span class="selo erro">inativo</span>' : ''}</b>
+        <span>${esc(doc)}</span>${temRosto ? '<span class="selo ok">rosto cadastrado</span>' : '<span class="selo aviso">sem rosto</span>'}</div>
+      <div class="btns">
+        <button class="btn peq leve" data-presenca="${a.id}">Lançar presença</button>
+        <button class="btn peq ${temRosto ? 'leve' : 'primario'}" data-rosto="${a.id}">${temRosto ? 'Refazer rosto' : 'Cadastrar rosto'}</button>
+        ${temRosto ? `<button class="btn peq perigo" data-apagar="${a.id}">Apagar rosto</button>` : ''}
+      </div></div>`;
+  }).join('') + (lista.length > 300 ? `<div class="vazio">Mostrando 300 de ${lista.length}. Refine a busca.</div>` : '');
+}
+$('#busca').addEventListener('input', pintarAlunos);
+
+$('#listaAlunos').addEventListener('click', async e => {
+  const bR = e.target.closest('[data-rosto]'), bA = e.target.closest('[data-apagar]'), bP = e.target.closest('[data-presenca]');
+  if (bR) abrirCaptura(alunosEquipe.find(a => a.id === bR.dataset.rosto));
+  if (bA){
+    const a = alunosEquipe.find(x => x.id === bA.dataset.apagar);
+    if (!confirm(`Apagar o rosto de ${a.nome}? Ele não será mais reconhecido até cadastrar de novo.`)) return;
+    const { error } = await sbEquipe.from('rostos').delete().eq('aluno_id', a.id);
+    if (error) return aviso('Não foi possível apagar. Verifique a internet.');
+    rostosEquipe.delete(a.id); pintarAlunos(); aviso(`Rosto de ${a.nome} apagado.`);
+    await atualizarSessao(false); await carregarRostos();
+  }
+  if (bP){
+    const a = alunosEquipe.find(x => x.id === bP.dataset.presenca);
+    bP.disabled = true;
+    const { data, error } = await sbEquipe.rpc('registrar_presenca_manual', { p_aluno:a.id, p_unidade:sessao.unidade_id });
+    bP.disabled = false;
+    if (error) return aviso(error.message || 'Não foi possível lançar a presença.');
+    const txt = { registrada:`Presença de ${a.nome} lançada.`, ja_registrada:`${a.nome} já tem presença hoje.`,
+                  nao_liberado:`${a.nome} não está liberado nesta unidade.`, aluno_inativo:`${a.nome} está com a matrícula inativa.` };
+    aviso(txt[data?.status] || 'Não foi possível lançar a presença.');
+  }
+});
+
+/* ---------- Novo aluno ---------- */
+function cpfValido(c){
+  c = soDigitos(c); if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  for (const p of [10, 11]){ let s = 0; for (let i = 0; i < p - 1; i++) s += +c[i] * (p - i); let r = (s * 10) % 11; if (r === 10) r = 0; if (r !== +c[p - 1]) return false; }
+  return true;
+}
+$('#aCpf').addEventListener('input', e => {
+  const d = soDigitos(e.target.value).slice(0, 11);
+  e.target.value = d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+});
+$('#btnNovoAluno').addEventListener('click', () => {
+  $('#formAluno').reset(); $('#aErro').textContent = '';
+  $('#aMods').innerHTML = equipe.modalidades.length
+    ? equipe.modalidades.map(m => `<label><input type="checkbox" value="${m.id}">${esc(m.nome)}</label>`).join('')
+    : '<span style="color:var(--muted);font-weight:500">Nenhuma modalidade cadastrada ainda.</span>';
+  $('#mAluno').hidden = false; $('#aNome').focus();
+});
+$('#aCancelar').addEventListener('click', () => $('#mAluno').hidden = true);
+$('#formAluno').addEventListener('submit', async e => {
+  e.preventDefault();
+  const cpf = soDigitos($('#aCpf').value), email = $('#aEmail').value.trim().toLowerCase();
+  const err = $('#aErro');
+  if (!cpf && !email) return err.textContent = 'Informe o CPF ou o e-mail do aluno.';
+  if (cpf && !cpfValido(cpf)) return err.textContent = 'CPF inválido. Confira os números digitados.';
+  const b = $('#aSalvar'); b.disabled = true;
+  const reg = { org_id:equipe.org, unidade_id:sessao.unidade_id, nome:$('#aNome').value.trim(),
+                cpf:cpf || null, email:email || null, nascimento:$('#aNasc').value || null,
+                modalidades:$$('#aMods input:checked').map(i => i.value) };
+  const { data, error } = await sbEquipe.from('alunos').insert(reg).select('id,nome,cpf,email,nascimento,status,unidade_id,unidades_liberadas').single();
+  b.disabled = false;
+  if (error){
+    err.textContent = /limite_plano|plano/i.test(error.message + (error.hint || '')) ? error.message
+                    : /cpf|e-mail|Informe/i.test(error.message) ? error.message
+                    : 'Não foi possível salvar o aluno. Verifique a internet.';
+    return;
+  }
+  alunosEquipe.push(data); alunosEquipe.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  $('#mAluno').hidden = true; pintarAlunos();
+  abrirCaptura(data);
+});
+
+/* ---------- Captura do rosto ---------- */
+const DICAS = ['Olhe direto para a câmera', 'Vire o rosto levemente para a esquerda', 'Agora levemente para a direita', 'Levante um pouco o queixo', 'Olhe para a câmera de novo'];
+let cap = { ativo:false, amostras:[], aluno:null, quem:'' };
+function idade(nasc){ if (!nasc) return null; const d = new Date(nasc + 'T12:00:00'), h = new Date(); let i = h.getFullYear() - d.getFullYear(); if (h < new Date(h.getFullYear(), d.getMonth(), d.getDate())) i--; return i; }
+
+function abrirCaptura(aluno){
+  if (!aluno) return;
+  const menor = (idade(aluno.nascimento) ?? 99) < 18;
+  cap = { ativo:false, amostras:[], aluno, quem:'', menor };
+  $('#capTitulo').textContent = rostosEquipe.has(aluno.id) ? `Refazer rosto de ${aluno.nome}` : `Cadastrar rosto de ${aluno.nome}`;
+  $('#capOk').checked = false; $('#capErro').textContent = '';
+  $('#capOkTxt').textContent = menor
+    ? `O responsável por ${aluno.nome} autorizou o uso do rosto para registrar a presença na academia.`
+    : `${aluno.nome} autorizou o uso do rosto para registrar a presença na academia.`;
+  $('#capQuemLbl').textContent = menor ? 'Nome do responsável' : 'Nome de quem autorizou';
+  $('#capQuem').value = menor ? '' : aluno.nome;
+  $('#capConsent').hidden = false; $('#capLeitura').hidden = true;
+  $('#mCap').hidden = false;
+}
+function fecharCaptura(){ cap.ativo = false; $('#mCap').hidden = true; $('#capVideo').srcObject = null; }
+$('#capCancelar1').addEventListener('click', fecharCaptura);
+$('#capCancelar2').addEventListener('click', fecharCaptura);
+
+$('#capComecar').addEventListener('click', async () => {
+  const quem = $('#capQuem').value.trim();
+  if (!$('#capOk').checked) return $('#capErro').textContent = 'Marque a autorização para continuar.';
+  if (quem.length < 3) return $('#capErro').textContent = cap.menor ? 'Informe o nome do responsável.' : 'Informe o nome de quem autorizou.';
+  if (!modelosProntos || !stream) return $('#capErro').textContent = 'A câmera ainda não está pronta.';
+  cap.quem = quem; cap.ativo = true; cap.amostras = [];
+  $('#capConsent').hidden = true; $('#capLeitura').hidden = false;
+  $('#capPassos').innerHTML = '<i></i>'.repeat(AMOSTRAS);
+  $('#capMsg').textContent = DICAS[0];
+  const v = $('#capVideo'); v.srcObject = stream; await v.play().catch(() => {});
+  await sleep(600);
+  loopCaptura();
+});
+
+async function loopCaptura(){
+  if (!cap.ativo) return;
+  const v = $('#capVideo');
+  if (v.readyState >= 2){
+    try {
+      const dets = await faceapi.detectAllFaces(v, new faceapi.SsdMobilenetv1Options({ minConfidence:0.7 })).withFaceLandmarks().withFaceDescriptors();
+      if (!cap.ativo) return;
+      if (!dets.length) $('#capMsg').textContent = 'Nenhum rosto na imagem. Centralize o rosto no oval.';
+      else if (dets.length > 1) $('#capMsg').textContent = 'Há mais de um rosto. Deixe só o aluno na frente da câmera.';
+      else if (dets[0].detection.box.width / v.videoWidth < 0.15) $('#capMsg').textContent = 'Aproxime o rosto da câmera.';
+      else {
+        cap.amostras.push(Array.from(dets[0].descriptor, x => Math.round(x * 1e4) / 1e4));
+        const n = cap.amostras.length;
+        $$('#capPassos i').forEach((el, i) => el.classList.toggle('on', i < n));
+        const cv = $('#capView'); cv.classList.remove('flash'); void cv.offsetWidth; cv.classList.add('flash');
+        bip('info');
+        if (n >= AMOSTRAS) return salvarRosto();
+        $('#capMsg').textContent = DICAS[n];
+        await sleep(900);
+      }
+    } catch(e){ console.error(e); }
+  }
+  setTimeout(loopCaptura, 150);
+}
+
+async function salvarRosto(){
+  cap.ativo = false;
+  const { aluno, amostras, quem } = cap;
+  $('#capMsg').textContent = 'Salvando…';
+  if (matcher){
+    const media = new Float32Array(128);
+    amostras.forEach(s => s.forEach((x, i) => media[i] += x / amostras.length));
+    const m = matcher.findBestMatch(media);
+    if (m.label !== 'unknown' && m.label !== aluno.id){
+      const outro = mapaAlunos.get(m.label)?.nome || 'outro aluno';
+      if (!confirm(`Este rosto é muito parecido com o de ${outro}. Salvar mesmo assim?`)){ fecharCaptura(); return; }
+    }
+  }
+  const { error } = await sbEquipe.from('rostos').upsert({
+    aluno_id:aluno.id, org_id:equipe.org, descritores:amostras, origem:'camera',
+    consentimento_em:new Date().toISOString(), consentimento_por:quem, atualizado_por:equipe.user.id
+  }, { onConflict:'aluno_id' });
+  if (error){ fecharCaptura(); return aviso('Não foi possível salvar o rosto. Verifique a internet.'); }
+  rostosEquipe.set(aluno.id, { aluno_id:aluno.id });
+  fecharCaptura(); pintarAlunos();
+  aviso(`Rosto de ${aluno.nome} salvo.`);
+  await atualizarSessao(false); await carregarRostos();
+}
+
+/* ---------- Presenças de hoje ---------- */
+$('#btnAtualizarPres').addEventListener('click', carregarPresencas);
+async function carregarPresencas(){
+  $('#listaPres').innerHTML = '<div class="vazio">Carregando…</div>';
+  const { data, error } = await sbEquipe.from('v_presencas')
+    .select('id,aluno_nome,hora_local,horario,status,confirmada,aguardando_aula,origem,semelhanca')
+    .eq('unidade_id', sessao.unidade_id).eq('data', hojeAcademia()).order('registrado_em', { ascending:false }).limit(1000);
+  if (error){ $('#listaPres').innerHTML = '<div class="vazio">Não foi possível carregar. Verifique a internet.</div>'; return; }
+  const ativas = data.filter(p => p.status === 'ativa');
+  $('#pResumo').textContent = `${ativas.length} ${ativas.length === 1 ? 'presença' : 'presenças'} hoje · ${ativas.filter(p => p.aguardando_aula).length} aguardando a aula começar`;
+  if (!data.length){ $('#listaPres').innerHTML = '<div class="vazio">Nenhuma presença hoje nesta unidade.</div>'; return; }
+  const origem = { facial:'rosto', manual:'manual', lote:'lote', catraca:'catraca' };
+  $('#listaPres').innerHTML = data.map(p => {
+    const selo = p.status === 'cancelada' ? '<span class="selo erro">cancelada</span>'
+               : p.aguardando_aula ? '<span class="selo aviso">aguardando a aula</span>' : '<span class="selo ok">confirmada</span>';
+    return `<div class="item">
+      <span class="ini">${esc(iniciais(p.aluno_nome))}</span>
+      <div class="txt"><b>${esc(p.aluno_nome)}</b>
+        <span>${esc(p.hora_local)}${p.horario ? ` · aula das ${esc(p.horario)}` : ''} · ${origem[p.origem] || p.origem}${p.semelhanca ? ` ${p.semelhanca}%` : ''}</span>${selo}</div>
+      <div class="btns">${p.status === 'ativa' ? `<button class="btn peq perigo" data-cancelar="${p.id}" data-nome="${esc(p.aluno_nome)}">Cancelar</button>` : ''}</div>
+    </div>`;
+  }).join('');
+}
+$('#listaPres').addEventListener('click', async e => {
+  const b = e.target.closest('[data-cancelar]'); if (!b) return;
+  const motivo = prompt(`Cancelar a presença de ${b.dataset.nome}? Informe o motivo:`, 'Leitura por engano');
+  if (motivo === null) return;
+  const { error } = await sbEquipe.rpc('cancelar_presenca', { p_id:b.dataset.cancelar, p_motivo:motivo || null });
+  if (error) return aviso('Não foi possível cancelar. Verifique a internet.');
+  aviso('Presença cancelada.'); carregarPresencas();
+});
+
+/* ---------- Ajustes da leitura (admin) ---------- */
+const AJ = [
+  ['cRigor','oRigor','rigor', v => (+v).toFixed(2)],
+  ['cConf','oConf','confirmacoes', v => v],
+  ['cDist','oDist','distancia_min', v => Math.round(v * 100) + '%'],
+  ['cTempo','oTempo','tempo_cartao', v => v + 's'],
+];
+function mostrarAjustes(){
+  AJ.forEach(([i, o, k, f]) => { $('#' + i).value = cfg[k]; $('#' + o).textContent = f(cfg[k]); });
+  $('#cEspelhar').checked = !!cfg.espelhar; $('#cSom').checked = !!cfg.som; $('#cVoz').checked = !!cfg.voz;
+}
+AJ.forEach(([i, o, k, f]) => $('#' + i).addEventListener('input', e => $('#' + o).textContent = f(e.target.value)));
+$('#btnSalvarAjustes').addEventListener('click', async () => {
+  const novo = { ...cfg };
+  AJ.forEach(([i, , k]) => novo[k] = +$('#' + i).value);
+  novo.espelhar = $('#cEspelhar').checked; novo.som = $('#cSom').checked; novo.voz = $('#cVoz').checked;
+  const { error } = await sbEquipe.from('unidades').update({ config_tablet:novo }).eq('id', sessao.unidade_id);
+  if (error) return aviso('Não foi possível salvar. Verifique a internet.');
+  aplicarSessao({ ...sessao, config:novo });
+  aviso('Ajustes salvos. Valem para todos os tablets desta unidade.');
+});
+
+/* ---------- Este tablet ---------- */
+function mostrarTablet(){
+  const linhas = [
+    ['Tablet', sessao.tablet], ['Academia', sessao.organizacao], ['Unidade', sessao.unidade],
+    ['Rostos carregados', rostos.length], ['Check-ins aguardando envio', fila.length],
+    ['Conexão', online ? 'conectado' : 'sem internet'], ['Modo de check-in', sessao.modo_checkin === 'janela' ? 'por horário de aula' : 'livre']
+  ];
+  $('#dadosTablet').innerHTML = linhas.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+}
+$('#btnSync').addEventListener('click', async () => {
+  const b = $('#btnSync'); b.disabled = true; b.textContent = 'Sincronizando…';
+  await enviarFila(); await atualizarSessao(false); await idb.set('rostos', null); await carregarRostos();
+  b.disabled = false; b.textContent = 'Sincronizar agora'; mostrarTablet();
+  aviso(online ? 'Tablet sincronizado.' : 'Sem conexão com o servidor.');
+});
+$('#btnDesconectar').addEventListener('click', async () => {
+  const pend = fila.length ? ` Há ${fila.length} check-in(s) ainda não enviados, que serão perdidos.` : '';
+  if (!confirm(`Desconectar este tablet da academia?${pend} Para usar de novo, será preciso um novo código.`)) return;
+  try { await sbEquipe.from('tablets').update({ ativo:false }).eq('id', sessao.tablet_id); } catch(e){}
+  await sbEquipe.auth.signOut().catch(() => {});
+  desparear('Tablet desconectado.');
+});
+
+boot();
+</script>
+</body>
+</html>
